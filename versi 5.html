@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JustWord - Kata-Kata Puitis</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 0;
+            padding: 20px;
+            background: #f4f4f4;
+        }
+        .container {
+            max-width: 500px;
+            margin: 50px auto;
+            padding: 20px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0px 0px 10px rgba(0,0,0,0.1);
+        }
+        input, button, textarea {
+            width: 90%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        button {
+            background: blue;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background: darkblue;
+            transform: scale(1.05);
+        }
+        .leaderboard {
+            text-align: left;
+            margin-top: 20px;
+            padding: 10px;
+            background: #e3f2fd;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="loginPage" class="container">
+        <h1>JustWord</h1>
+        <h2>Login</h2>
+        <input type="text" id="loginUsername" placeholder="Username" required>
+        <input type="password" id="loginPassword" placeholder="Password" required>
+        <button onclick="login()">Masuk</button>
+        <p>Belum punya akun? <a href="#" onclick="showRegister()">Daftar</a></p>
+
+        <div id="registerForm" style="display:none;">
+            <h2>Daftar</h2>
+            <input type="text" id="registerUsername" placeholder="Username" required>
+            <input type="password" id="registerPassword" placeholder="Password" required>
+            <button onclick="register()">Daftar</button>
+            <p>Sudah punya akun? <a href="#" onclick="showLogin()">Login</a></p>
+        </div>
+    </div>
+
+    <div id="dashboardPage" class="container" style="display:none;">
+        <header>
+            <h1>JustWord</h1>
+            <button onclick="logout()">Logout</button>
+        </header>
+        <h2>Selamat Datang di JustWord</h2>
+        <ul id="quoteList"></ul>
+
+        <h3>Tambahkan Kata-Kata Puitis</h3>
+        <textarea id="quote" placeholder="Masukkan kata-kata..."></textarea>
+        <button onclick="uploadQuote()">Upload</button>
+
+        <h3>Leaderboard</h3>
+        <div id="leaderboard" class="leaderboard"></div>
+    </div>
+
+    <script>
+        function showDashboard(isAdmin) {
+            document.getElementById("loginPage").style.display = "none";
+            document.getElementById("dashboardPage").style.display = "block";
+            loadQuotes(isAdmin);
+        }
+
+        function register() {
+            let users = JSON.parse(localStorage.getItem("users")) || [];
+            let username = document.getElementById("registerUsername").value;
+            let password = btoa(document.getElementById("registerPassword").value);
+            
+            if (users.find(u => u.username === username)) {
+                alert("Username sudah digunakan!");
+                return;
+            }
+
+            users.push({ username, password });
+            localStorage.setItem("users", JSON.stringify(users));
+            alert("Registrasi berhasil!");
+            showLogin();
+        }
+
+        function login() {
+            let users = JSON.parse(localStorage.getItem("users")) || [];
+            let username = document.getElementById("loginUsername").value;
+            let password = btoa(document.getElementById("loginPassword").value);
+
+            if (username === "admin" && password === btoa("justword123")) {
+                sessionStorage.setItem("loggedInUser", "admin");
+                alert("Login sebagai Admin berhasil!");
+                showDashboard(true);
+                return;
+            }
+
+            let user = users.find(u => u.username === username && u.password === password);
+
+            if (user) {
+                sessionStorage.setItem("loggedInUser", username);
+                showDashboard(false);
+            } else {
+                alert("Username atau password salah!");
+            }
+        }
+
+        function logout() {
+            sessionStorage.removeItem("loggedInUser");
+            location.reload();
+        }
+
+        function uploadQuote() {
+            let username = sessionStorage.getItem("loggedInUser");
+            let quotes = JSON.parse(localStorage.getItem("quotes")) || [];
+            let quote = document.getElementById("quote").value;
+
+            if (quote.trim() === "") {
+                alert("Kata-kata tidak boleh kosong!");
+                return;
+            }
+
+            quotes.push({ text: quote, user: username, likes: 0, views: 0, comments: [] });
+            localStorage.setItem("quotes", JSON.stringify(quotes));
+            alert("Kata-kata berhasil diunggah!");
+            loadQuotes(sessionStorage.getItem("loggedInUser") === "admin");
+        }
+
+        function loadQuotes(isAdmin) {
+            let quotes = JSON.parse(localStorage.getItem("quotes")) || [];
+            let quoteList = document.getElementById("quoteList");
+            let leaderboard = document.getElementById("leaderboard");
+            quoteList.innerHTML = "";
+            leaderboard.innerHTML = "";
+
+            quotes.forEach((q, index) => {
+                let li = document.createElement("li");
+                li.innerHTML = `<strong>${q.text}</strong> <br> 
+                                <small>Oleh: ${q.user} | Dilihat: ${q.views} kali | ${q.likes} suka</small>`;
+
+                let likeBtn = document.createElement("button");
+                likeBtn.textContent = "Suka ❤️";
+                likeBtn.onclick = () => likeQuote(index);
+
+                li.appendChild(likeBtn);
+                quoteList.appendChild(li);
+
+                q.views += 1;
+            });
+
+            quotes.sort((a, b) => b.likes - a.likes).slice(0, 5).forEach(q => {
+                let leaderItem = document.createElement("p");
+                leaderItem.innerHTML = `<strong>${q.text}</strong> - ${q.likes} suka`;
+                leaderboard.appendChild(leaderItem);
+            });
+
+            localStorage.setItem("quotes", JSON.stringify(quotes));
+        }
+
+        function likeQuote(index) {
+            let quotes = JSON.parse(localStorage.getItem("quotes"));
+            quotes[index].likes += 1;
+            localStorage.setItem("quotes", JSON.stringify(quotes));
+            loadQuotes();
+        }
+
+        function showRegister() {
+            document.getElementById("registerForm").style.display = "block";
+        }
+
+        function showLogin() {
+            document.getElementById("registerForm").style.display = "none";
+        }
+    </script>
+
+</body>
+</html>
